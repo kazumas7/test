@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070a12" />
+  <meta name="description" content="Painel eleitoral interativo — Eleições 2026, resultados ao vivo, mapa, histórico e auditoria de fontes." />
+  <title>ELEITORA — Eleições 2026</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <div class="brand-name">ELEITORA</div>
+          <div class="brand-sub">dados eleitorais • Brasil</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="live-chip" id="liveChip"><span class="live-dot"></span><span id="liveText">CARREGANDO TSE</span></div>
+        <button class="icon-btn" id="shareBtn" title="Copiar link do painel" aria-label="Copiar link"><span>↗</span></button>
+        <button class="icon-btn" id="autoBtn" title="Ligar/desligar atualização automática" aria-label="Atualização automática">⟳</button>
+        <button class="icon-btn" id="themeBtn" title="Alternar tema" aria-label="Alternar tema">☾</button>
+      </div>
+    </header>
+
+    <nav class="nav-tabs" aria-label="Navegação principal">
+      <button class="nav-tab active" data-section="overview">Visão geral</button>
+      <button class="nav-tab" data-section="map">Mapa & rede</button>
+      <button class="nav-tab" data-section="history">Histórico</button>
+      <button class="nav-tab" data-section="second">2º turno</button>
+      <button class="nav-tab" data-section="audit">Fontes & auditoria</button>
+    </nav>
+
+    <main>
+      <section class="hero section" id="overview">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="pulse"></span> ELEIÇÕES GERAIS 2026</div>
+          <h1>O mapa eleitoral,<br><em>conectado em tempo real.</em></h1>
+          <p>Um painel para acompanhar totalização, território, histórico e sinais do 2º turno — priorizando dados oficiais da Justiça Eleitoral e deixando cada fonte rastreável.</p>
+          <div class="hero-actions">
+            <button class="primary-btn" id="refreshBtn">Atualizar agora <span>↻</span></button>
+            <a class="ghost-btn" href="https://resultados.tse.jus.br/oficial/app/index.html" target="_blank" rel="noopener">Abrir Resultados TSE ↗</a>
+          </div>
+        </div>
+        <div class="hero-orbit" aria-hidden="true">
+          <div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div>
+          <div class="orbit-core">BR<br><small>2026</small></div>
+          <div class="orbit-node n1">TSE</div>
+          <div class="orbit-node n2">IBGE</div>
+          <div class="orbit-node n3">BU</div>
+          <div class="orbit-node n4">PESQ</div>
+        </div>
+      </section>
+
+      <section class="section compact-head" id="live-dashboard">
+        <div class="section-title-row">
+          <div>
+            <div class="eyebrow">PLACAR NACIONAL</div>
+            <h2>Presidência • 1º turno</h2>
+          </div>
+          <div class="controls">
+            <label class="select-wrap"><span>Cargo</span><select id="officeSelect">
+              <option value="president">Presidente</option>
+              <option value="governor">Governador</option>
+              <option value="senator">Senador</option>
+              <option value="federalDeputy">Deputado Federal</option>
+              <option value="stateDeputy">Deputado Estadual/Distrital</option>
+            </select></label>
+            <label class="select-wrap"><span>UF</span><select id="ufSelect"><option value="BR">Brasil</option></select></label>
+          </div>
+        </div>
+        <div class="metric-grid">
+          <article class="metric-card large"><div class="metric-label">Totalização</div><div class="metric-value" id="mTotalized">99,99%</div><div class="metric-note" id="mUpdated">última leitura: —</div><div class="meter"><span id="mTotalBar" style="width:99.99%"></span></div></article>
+          <article class="metric-card"><div class="metric-label">Votos válidos</div><div class="metric-value" id="mValid">125.272.513</div><div class="metric-note">base de cálculo</div></article>
+          <article class="metric-card"><div class="metric-label">Brancos</div><div class="metric-value" id="mBlank">2.300.781</div><div class="metric-note">fora dos válidos</div></article>
+          <article class="metric-card"><div class="metric-label">Nulos</div><div class="metric-value" id="mNull">3.674.149</div><div class="metric-note">fora dos válidos</div></article>
+          <article class="metric-card accent"><div class="metric-label">Diferença líder</div><div class="metric-value" id="mDiff">1,87 pp</div><div class="metric-note" id="mDiffVotes">2.227.651 votos</div></article>
+        </div>
+      </section>
+
+      <section class="section race-section">
+        <div class="race-header">
+          <div>
+            <div class="eyebrow">A CORRIDA</div>
+            <h2 id="raceTitle">Flávio Bolsonaro × Lula</h2>
+          </div>
+          <div class="timestamp" id="timestamp">—</div>
+        </div>
+        <div class="race-grid">
+          <article class="candidate-card c1">
+            <div class="candidate-top"><span class="rank">01</span><span class="party-pill" id="cand1Party">PL</span></div>
+            <div class="candidate-name" id="cand1Name">Flávio Bolsonaro</div>
+            <div class="candidate-sub" id="cand1Sub">—</div>
+            <div class="candidate-score"><strong id="cand1Pct">47,03%</strong><span id="cand1Votes">56.104.268 votos</span></div>
+            <div class="race-bar"><span id="cand1Bar" style="width:47.03%"></span></div>
+          </article>
+          <div class="vs">VS</div>
+          <article class="candidate-card c2">
+            <div class="candidate-top"><span class="rank">02</span><span class="party-pill" id="cand2Party">PT</span></div>
+            <div class="candidate-name" id="cand2Name">Luiz Inácio Lula da Silva</div>
+            <div class="candidate-sub" id="cand2Sub">—</div>
+            <div class="candidate-score"><strong id="cand2Pct">45,16%</strong><span id="cand2Votes">53.876.617 votos</span></div>
+            <div class="race-bar"><span id="cand2Bar" style="width:45.16%"></span></div>
+          </article>
+        </div>
+        <div class="race-foot"><span id="raceConcentration">Os dois concentram 92,19% dos votos válidos.</span><span>O segundo turno é uma nova votação.</span></div>
+      </section>
+
+      <section class="section split-section">
+        <div class="panel chart-panel">
+          <div class="panel-head"><div><div class="eyebrow">EVOLUÇÃO</div><h3>Presidência • votos válidos</h3></div><span class="mini-tag">2018 → 2026</span></div>
+          <div class="chart-wrap"><canvas id="historyChart"></canvas></div>
+        </div>
+        <div class="panel map-mini-panel">
+          <div class="panel-head"><div><div class="eyebrow">TERRITÓRIO</div><h3>Quem venceu em cada UF</h3></div><button class="link-btn" data-section="map">Abrir mapa →</button></div>
+          <div class="mini-state-list" id="miniStateList"></div>
+        </div>
+      </section>
+
+      <section class="section second-preview" id="second">
+        <div class="section-title-row">
+          <div><div class="eyebrow">PRÓXIMA FASE</div><h2>Centro de comando do 2º turno</h2></div>
+          <div class="countdown" id="countdown"><span>—</span></div>
+        </div>
+        <div class="second-grid">
+          <div class="panel scenario-panel">
+            <div class="scenario-title">Presidência</div>
+            <div class="scenario-row"><span class="dot red"></span><b>Flávio Bolsonaro</b><span class="scenario-party">PL</span></div>
+            <div class="scenario-row"><span class="dot blue"></span><b>Lula</b><span class="scenario-party">PT</span></div>
+            <div class="scenario-line"><span></span></div>
+            <div class="scenario-meta"><span>Data</span><b>25 OUT 2026</b></div>
+          </div>
+          <div class="panel scenario-panel">
+            <div class="scenario-title">Governos no 2º turno</div>
+            <div class="uf-badges" id="runoffBadges"></div>
+            <div class="muted">7 disputas: 6 estados + DF.</div>
+          </div>
+          <div class="panel scenario-panel poll-panel">
+            <div class="scenario-title">Pesquisas recentes</div>
+            <div id="pollList"></div>
+            <a class="source-link" href="https://www.tse.jus.br/administracao/painel/registro-de-pesquisas-eleitorais" target="_blank" rel="noopener">Consultar PesqEle no TSE ↗</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section map-section" id="map">
+        <div class="section-title-row">
+          <div><div class="eyebrow">MAPA & REDE</div><h2>Brasil conectado por pontos eleitorais</h2></div>
+          <div class="map-legend"><span><i class="legend-dot red"></i>Flávio</span><span><i class="legend-dot blue"></i>Lula</span></div>
+        </div>
+        <div class="map-layout">
+          <div class="map-card"><div id="mapCanvas"></div><div class="map-overlay"><span id="mapStatus">carregando território…</span></div></div>
+          <aside class="map-side">
+            <div class="panel network-panel">
+              <div class="panel-head"><div><div class="eyebrow">DATA GRAPH</div><h3>Conexões do painel</h3></div></div>
+              <div class="graph-wrap" id="graphWrap">
+                <svg viewBox="0 0 520 300" role="img" aria-label="Grafo de conexão entre fontes eleitorais">
+                  <g class="graph-lines"><line x1="260" y1="148" x2="120" y2="70"/><line x1="260" y1="148" x2="400" y2="70"/><line x1="260" y1="148" x2="115" y2="230"/><line x1="260" y1="148" x2="405" y2="230"/><line x1="120" y1="70" x2="115" y2="230"/><line x1="400" y1="70" x2="405" y2="230"/></g>
+                  <g class="graph-node central"><circle cx="260" cy="148" r="48"></circle><text x="260" y="145" text-anchor="middle">ELEITORA</text><text x="260" y="163" text-anchor="middle" class="small">painel</text></g>
+                  <g class="graph-node"><circle cx="120" cy="70" r="35"></circle><text x="120" y="66" text-anchor="middle">TSE</text><text x="120" y="82" text-anchor="middle" class="small">resultados</text></g>
+                  <g class="graph-node"><circle cx="400" cy="70" r="35"></circle><text x="400" y="66" text-anchor="middle">BU</text><text x="400" y="82" text-anchor="middle" class="small">auditoria</text></g>
+                  <g class="graph-node"><circle cx="115" cy="230" r="35"></circle><text x="115" y="226" text-anchor="middle">IBGE</text><text x="115" y="242" text-anchor="middle" class="small">território</text></g>
+                  <g class="graph-node"><circle cx="405" cy="230" r="35"></circle><text x="405" y="226" text-anchor="middle">PESQ</text><text x="405" y="242" text-anchor="middle" class="small">pesquisas</text></g>
+                </svg>
+              </div>
+              <div class="graph-note">A ideia é manter a origem de cada número explícita: resultado oficial, estrutura territorial, boletim de urna e pesquisa.</div>
+            </div>
+            <div class="panel state-table-panel"><div class="panel-head"><div><div class="eyebrow">UF</div><h3>Resumo por estado</h3></div><input class="search" id="stateSearch" placeholder="buscar UF ou capital…" /></div><div class="state-table" id="stateTable"></div></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section history-section" id="history">
+        <div class="section-title-row"><div><div class="eyebrow">MEMÓRIA</div><h2>Resultados anteriores</h2></div><span class="mini-tag">Presidência • Brasil</span></div>
+        <div class="history-cards" id="historyCards"></div>
+      </section>
+
+      <section class="section audit-section" id="audit">
+        <div class="section-title-row"><div><div class="eyebrow">TRANSPARÊNCIA</div><h2>Fontes, rastreabilidade e auditoria</h2></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost-btn small" id="downloadSnapshot">Baixar snapshot JSON</button><button class="ghost-btn small" id="downloadCsv">Baixar CSV</button></div></div>
+        <div class="sources-grid" id="sourcesGrid"></div>
+        <div class="panel audit-console"><div class="panel-head"><div><div class="eyebrow">PAYLOAD</div><h3>Última resposta recebida</h3></div><span class="mini-tag" id="payloadMeta">—</span></div><pre id="rawPayload">Aguardando leitura do TSE…</pre></div>
+      </section>
+    </main>
+
+    <footer class="footer"><span>ELEITORA • projeto aberto para GitHub</span><span>Dados oficiais: TSE • mapas: OpenStreetMap</span></footer>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
